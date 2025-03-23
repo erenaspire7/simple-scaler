@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package transcription;
+
+service Transcription {
+    rpc TranscribeVideo(stream VideoChunk) returns (TranscriptionResponse) {}
+}
+
+message VideoChunk {
+  bytes data = 1;
+  string upload_id = 2;
+}
+
+message TranscriptionResponse {
+  string message = 1;
+}

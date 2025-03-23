@@ -1,0 +1,32 @@
+# services:
+#   traefik:
+#     image: "traefik:v3.3"
+#     container_name: "traefik"
+#     command:
+#       - "--api.insecure=true"
+#       - "--providers.docker=true"
+#     ports:
+#       - "80:80"
+#       - "8080:8080"
+#     volumes:
+#       - "/var/run/docker.sock:/var/run/docker.sock"
+
+# whoami:
+#   image: traefik/whoami
+#   labels:
+#     - "traefik.http.routers.whoami.rule=Host(`whoami.docker.localhost`)"
+
+services:
+  transcribe-service:
+    build:
+      context: .
+      dockerfile: apps/services/transcription/Dockerfile
+
+  api:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    environment:
+      - HOST=0.0.0.0
+    ports:
+      - '3000:3000'
