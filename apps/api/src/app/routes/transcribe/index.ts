@@ -20,6 +20,7 @@ export default async function (fastify: FastifyInstance) {
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
     });
+
     let hasEnded = false;
 
     const call = transcriptionClient.transcribeYoutube({ url });
@@ -45,13 +46,6 @@ export default async function (fastify: FastifyInstance) {
           `data: ${JSON.stringify({ error: error.message })}\n\n`
         );
         reply.raw.end();
-        hasEnded = true;
-      }
-    });
-
-    request.raw.on('close', () => {
-      if (!hasEnded) {
-        call.cancel();
         hasEnded = true;
       }
     });

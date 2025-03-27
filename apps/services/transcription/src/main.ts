@@ -4,6 +4,7 @@ import {
   YoutubeRequest,
   TranscriptionResponse,
 } from '@libs/protos';
+import ytdl from '@distube/ytdl-core';
 
 const PORT = process.env.PORT || 4000;
 
@@ -14,11 +15,23 @@ function transcribeYoutube(
 ) {
   const { url } = call.request;
 
-  // get youtube metadata
-  // drop an event and wait for it to complete through direct ollama call
-  
+  const videoStream = ytdl(url);
 
-  console.log(url);
+  videoStream.on('data', (chunk) => {
+    call.write({
+      type: 'data',
+      chunk: chunk.toString('base64'),
+    });
+  });
+
+  videoStream.on('end', () => {
+    // Send end message
+    call.write({
+      type: 'end',
+      message: 'Stream completed',
+    });
+    call.end();
+  });
 }
 
 server.addService(TranscriptionService, { transcribeYoutube });
