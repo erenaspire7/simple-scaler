@@ -3,12 +3,11 @@ syntax = "proto3";
 package transcription;
 
 service Transcription {
-    rpc TranscribeVideo(stream VideoChunk) returns (TranscriptionResponse) {}
+    rpc TranscribeYoutube(YoutubeRequest) returns (stream TranscriptionResponse) {}
 }
 
-message VideoChunk {
-  bytes data = 1;
-  string upload_id = 2;
+message YoutubeRequest {
+  string url = 1;
 }
 
 message TranscriptionResponse {

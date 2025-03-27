@@ -1,53 +1,59 @@
 import { FastifyInstance } from 'fastify';
 import * as grpc from '@grpc/grpc-js';
-// import { TranscribeVideoRequest, TranscribeVideo } from './validation';
+import { TranscribeYoutubeRequest } from './validation';
 import { TranscriptionClient } from '@libs/protos';
 
 export default async function (fastify: FastifyInstance) {
+  const TRANSCRIPTION_SERVICE_URL =
+    process.env.TRANSCRIPTION_SERVICE_URL || 'localhost:4000';
+
   const transcriptionClient = new TranscriptionClient(
-    'localhost:50051',
+    TRANSCRIPTION_SERVICE_URL,
     grpc.credentials.createInsecure()
   );
 
-  fastify.post(
-    '/upload',
-    {
-      config: { stream: true },
-    },
-    async function (request, reply) {
-      const uploadId = crypto.randomUUID();
+  fastify.post('/youtube', {}, async function (request, reply) {
+    const { url } = TranscribeYoutubeRequest.parse(request.body);
 
-      console.log("Transcribing video with ID:", uploadId);
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+    let hasEnded = false;
 
-      const call = transcriptionClient.transcribeVideo((error, response) => {
-        if (error) {
-          console.error('Transcription error:', error);
-          // Handle the error appropriately
-        } else {
-          // Handle successful response
-          console.log('Transcription completed:', response.message);
-        }
-      });
+    const call = transcriptionClient.transcribeYoutube({ url });
 
-      // Process incoming chunks and send to gRPC
-      for await (const chunk of request.raw) {
-        const videoChunk = {
-          data: chunk,
-          uploadId,
-        };
-
-        // Write chunk to gRPC stream
-        const canContinue = call.write(videoChunk);
-
-        if (!canContinue) {
-          // Handle backpressure
-          await new Promise((resolve) => call.once('drain', resolve));
-        }
+    call.on('data', (response) => {
+      if (!hasEnded) {
+        reply.raw.write(`data: ${JSON.stringify(response)}\n\n`);
       }
+    });
 
-      call.end();
+    call.on('end', () => {
+      if (!hasEnded) {
+        reply.raw.write('data: [END]\n\n');
+        reply.raw.end();
+        hasEnded = true;
+      }
+    });
 
-      return { message: 'Hello API' };
-    }
-  );
+    call.on('error', (error) => {
+      if (!hasEnded) {
+        console.error('gRPC stream error:', error);
+        reply.raw.write(
+          `data: ${JSON.stringify({ error: error.message })}\n\n`
+        );
+        reply.raw.end();
+        hasEnded = true;
+      }
+    });
+
+    request.raw.on('close', () => {
+      if (!hasEnded) {
+        call.cancel();
+        hasEnded = true;
+      }
+    });
+  });
 }

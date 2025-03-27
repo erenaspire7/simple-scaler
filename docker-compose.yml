@@ -21,6 +21,8 @@ services:
     build:
       context: .
       dockerfile: apps/services/transcription/Dockerfile
+    ports:
+      - '3001:4000'
 
   api:
     build:
@@ -28,5 +30,28 @@ services:
       dockerfile: ./apps/api/Dockerfile
     environment:
       - HOST=0.0.0.0
+      - TRANSCRIPTION_SERVICE_URL=transcribe-service:4000
+    depends_on:
+      - transcribe-service
     ports:
       - '3000:3000'
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - '8000:11434'
+    volumes:
+      - ./tools/docker/ollama-entrypoint.sh:/entrypoint.sh
+      - ollama_data:/root/.ollama
+    entrypoint: ["/entrypoint.sh"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  ollama_data:
