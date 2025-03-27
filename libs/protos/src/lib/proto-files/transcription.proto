@@ -11,5 +11,7 @@ message YoutubeRequest {
 }
 
 message TranscriptionResponse {
-  string message = 1;
+  string type = 1;
+  optional string chunk = 2;
+  optional string message = 3;
 }
