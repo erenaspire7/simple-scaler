@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package stream;
+
+service Stream {
+    rpc StreamYoutube(YoutubeRequest) returns (stream StreamResponse) {}
+}
+
+message YoutubeRequest {
+  string url = 1;
+}
+
+message StreamResponse {
+  string type = 1;
+  optional string chunk = 2;
+  optional string message = 3;
+}

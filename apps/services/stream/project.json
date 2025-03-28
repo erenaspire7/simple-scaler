@@ -1,7 +1,7 @@
 {
-  "name": "transcription-service",
+  "name": "stream-service",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/services/transcription/src",
+  "sourceRoot": "apps/services/stream/src",
   "projectType": "application",
   "tags": [],
   "targets": {
@@ -11,12 +11,12 @@
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
-        "outputPath": "dist/apps/services/transcription",
+        "outputPath": "dist/apps/services/stream",
         "format": ["cjs"],
         "bundle": false,
-        "main": "apps/services/transcription/src/main.ts",
-        "tsConfig": "apps/services/transcription/tsconfig.app.json",
-        "assets": ["apps/services/transcription/src/assets"],
+        "main": "apps/services/stream/src/main.ts",
+        "tsConfig": "apps/services/stream/tsconfig.app.json",
+        "assets": ["apps/services/stream/src/assets"],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,
@@ -42,16 +42,21 @@
       "defaultConfiguration": "development",
       "dependsOn": ["build"],
       "options": {
-        "buildTarget": "transcription:build",
+        "buildTarget": "stream:build",
         "runBuildTargetDependencies": false
       },
       "configurations": {
         "development": {
-          "buildTarget": "transcription-service:build:development"
+          "buildTarget": "stream-service:build:development"
         },
         "production": {
-          "buildTarget": "transcription-service:build:production"
+          "buildTarget": "stream-service:build:production"
         }
+      }
+    },
+    "test": {
+      "options": {
+        "passWithNoTests": true
       }
     }
   }

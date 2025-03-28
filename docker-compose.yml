@@ -17,10 +17,12 @@
 #     - "traefik.http.routers.whoami.rule=Host(`whoami.docker.localhost`)"
 
 services:
-  transcribe-service:
+  stream-service:
     build:
       context: .
-      dockerfile: apps/services/transcription/Dockerfile
+      dockerfile: apps/services/stream/Dockerfile
+    environment:
+      - HOST=0.0.0.0
     ports:
       - '3001:4000'
 
@@ -30,10 +32,16 @@ services:
       dockerfile: ./apps/api/Dockerfile
     environment:
       - HOST=0.0.0.0
-      - TRANSCRIPTION_SERVICE_URL=transcribe-service:4000
+      - STREAM_SERVICE_URL=stream-service:4000
+      - REGISTRY_PREFIX=jamalyusuff
+      - API_BASE_URL=api:3000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
     depends_on:
-      - transcribe-service
+      - stream-service
     ports:
       - '3000:3000'
-
-

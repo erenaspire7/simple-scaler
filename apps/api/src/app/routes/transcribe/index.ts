@@ -1,53 +1,39 @@
 import { FastifyInstance } from 'fastify';
-import * as grpc from '@grpc/grpc-js';
-import { TranscribeYoutubeRequest } from './validation';
-import { TranscriptionClient } from '@libs/protos';
+import { YoutubeRequest } from '../../validation';
+import Docker from 'dockerode';
 
 export default async function (fastify: FastifyInstance) {
-  const TRANSCRIPTION_SERVICE_URL =
-    process.env.TRANSCRIPTION_SERVICE_URL || 'localhost:4000';
+  const docker = new Docker();
 
-  const transcriptionClient = new TranscriptionClient(
-    TRANSCRIPTION_SERVICE_URL,
-    grpc.credentials.createInsecure()
-  );
+  const registryPrefix = process.env.REGISTRY_PREFIX ?? '';
+
+  const API_BASE_URL =
+    process.env.API_BASE_URL ?? 'http://host.docker.internal:3000';
 
   fastify.post('/youtube', {}, async function (request, reply) {
-    const { url } = TranscribeYoutubeRequest.parse(request.body);
+    const { url } = YoutubeRequest.parse(request.body);
 
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    });
+    const callbackUrl = `${API_BASE_URL}/webhooks/transcription`;
 
-    let hasEnded = false;
+    const image = registryPrefix
+      ? `${registryPrefix}/transcription-service:latest`
+      : `transcription-service:latest`;
 
-    const call = transcriptionClient.transcribeYoutube({ url });
+    try {
+      await docker.run(
+        image,
+        ['--url', url, '--callback-url', callbackUrl],
+        process.stdout
+      );
+    } catch (error) {
+      console.error(error);
+      return reply.status(500).send({
+        message: 'Failed to start transcription job',
+      });
+    }
 
-    call.on('data', (response) => {
-      if (!hasEnded) {
-        reply.raw.write(`data: ${JSON.stringify(response)}\n\n`);
-      }
-    });
-
-    call.on('end', () => {
-      if (!hasEnded) {
-        reply.raw.write('data: [END]\n\n');
-        reply.raw.end();
-        hasEnded = true;
-      }
-    });
-
-    call.on('error', (error) => {
-      if (!hasEnded) {
-        console.error('gRPC stream error:', error);
-        reply.raw.write(
-          `data: ${JSON.stringify({ error: error.message })}\n\n`
-        );
-        reply.raw.end();
-        hasEnded = true;
-      }
+    await reply.status(200).send({
+      message: 'Transcription job started',
     });
   });
 }
