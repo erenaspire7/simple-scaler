@@ -1,0 +1,61 @@
+services:
+  traefik:
+    image: 'traefik:v3.3'
+    command:
+      - '--api.insecure=true'
+      - '--providers.docker=true'
+      - '--providers.docker.exposedbydefault=false'
+      - '--entryPoints.web.address=:80'
+      - '--entryPoints.grpc.address=:50051'
+    ports:
+      - '80:80'
+      - '50051:50051'
+      - '8080:8080'
+
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    networks:
+      - app-network-local
+
+  stream:
+    build:
+      context: .
+      dockerfile: apps/services/stream/Dockerfile
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.tcp.routers.stream.rule=HostSNI(`*`)'
+      - 'traefik.tcp.routers.stream.entrypoints=grpc'
+      - 'traefik.tcp.routers.stream.service=stream'
+      - 'traefik.tcp.services.stream.loadbalancer.server.port=50051'
+    environment:
+      - HOST=0.0.0.0
+      - PORT=50051
+    networks:
+      - app-network-local
+
+  api:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    environment:
+      - HOST=0.0.0.0
+      - STREAM_SERVICE_URL=traefik:50051
+      - API_BASE_URL=http://traefik/api
+      - NETWORK=app-network-local
+      - IS_SWARM=false
+      - TRANSCRIPTION_SERVICE_IMAGE=simple-scaler-transcription:latest
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.api.rule=PathPrefix(`/api`)'
+      - 'traefik.http.routers.api.entrypoints=web'
+      - 'traefik.http.services.api.loadbalancer.server.port=3000'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - stream
+    networks:
+      - app-network-local
+
+networks:
+  app-network-local:
+    name: app-network-local

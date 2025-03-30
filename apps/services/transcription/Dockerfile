@@ -1,14 +1,6 @@
-FROM node:22-alpine AS builder
+FROM simple-scaler-base AS builder
 
 WORKDIR /app
-
-COPY package*.json ./
-COPY nx.json ./
-COPY tsconfig*.json ./
-COPY eslint* ./
-COPY jest* ./
-
-RUN yarn
 
 COPY apps/services/transcription ./apps/services/transcription
 RUN NX_DAEMON=false yarn nx build transcription-service
@@ -21,6 +13,7 @@ WORKDIR /app
 COPY --from=builder /app/dist/apps/services/transcription /app
 
 RUN yarn
+RUN chown -R node:node /app
 
 ENTRYPOINT ["node", "main.js"]
 
